@@ -1,55 +1,95 @@
 package com.Muhaimen.i210888
-
 import android.content.Intent
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.widget.ArrayAdapter
 import android.widget.Spinner
 import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import com.android.volley.Request
+import com.android.volley.RequestQueue
+import com.android.volley.Response
+import com.android.volley.toolbox.StringRequest
+import com.android.volley.toolbox.Volley
+import java.net.URLEncoder
 
 class MainActivity4 : AppCompatActivity() {
+
+    private lateinit var requestQueue: RequestQueue
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main4)
 
-        val items = arrayOf("Select Country","Pakistan", "India", "Afghanistan")
+        requestQueue = Volley.newRequestQueue(this)
 
-// Create an ArrayAdapter using the string array and a default spinner layout
+        val items = arrayOf("Select Country", "Pakistan", "India", "Afghanistan")
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, items)
-
-// Specify the layout to use when the list of choices appears
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-
-// Apply the adapter to the spinner
         val spinner: Spinner = findViewById(R.id.spinner)
         spinner.adapter = adapter
 
-        val items2 = arrayOf("Select City","Islamabad", "Karachi", "Lahore")
-
-// Create an ArrayAdapter using the string array and a default spinner layout
+        val items2 = arrayOf("Select City", "Islamabad", "Karachi", "Lahore")
         val adapter2 = ArrayAdapter(this, android.R.layout.simple_spinner_item, items2)
-
-// Specify the layout to use when the list of choices appears
         adapter2.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-
-// Apply the adapter to the spinner
         val spinner2: Spinner = findViewById(R.id.spinner2)
         spinner2.adapter = adapter2
 
-
-        var button=findViewById<TextView>(R.id.signup)
+        val button = findViewById<TextView>(R.id.signup)
         button.setOnClickListener {
-            val intent1 = Intent(this, MainActivity5::class.java)
-            startActivity(intent1)
+            val name = findViewById<TextView>(R.id.nameEditText).text.toString()
+            val email = findViewById<TextView>(R.id.emailEditText).text.toString()
+            val contactNumber = findViewById<TextView>(R.id.contactNumberEditText).text.toString()
+            val country = spinner.selectedItem.toString()
+            val city = spinner2.selectedItem.toString()
+            val password = findViewById<TextView>(R.id.passwordEditText).text.toString()
+
+            // Make network request using Volley
+            saveUser(name, email, contactNumber, country, city, password)
         }
 
-
-        var button2=findViewById<TextView>(R.id.loginBtn)
+        val button2 = findViewById<TextView>(R.id.loginBtn)
         button2.setOnClickListener {
-            val intent2 = Intent(this, Main3Activity::class.java)
-            startActivity(intent2)
+            startActivity(Intent(this, Main3Activity::class.java))
         }
+    }
+
+    private fun saveUser(name: String, email: String, contactNumber: String, country: String, city: String, password: String) {
+        val ip = "192.168.100.8"
+        val url = "http://$ip/save_user.php"
+
+        val stringRequest = object : StringRequest(
+            Request.Method.POST,
+            url,
+            Response.Listener { response ->
+                // Handle the response
+                if (response.contains("New record created successfully")) {
+                    // Data saved successfully
+                    // You can perform additional actions here if needed
+                    // For example, you can show a success message or navigate to another activity
+                    startActivity(Intent(this@MainActivity4, MainActivity5::class.java))
+                    finish()
+                } else {
+                    // Data saving failed
+                    // You can handle the failure here, such as showing an error message
+                }
+            },
+            Response.ErrorListener { error ->
+                // Handle error
+            }) {
+
+            override fun getParams(): Map<String, String> {
+                val params = HashMap<String, String>()
+                params["name"] = name
+                params["email"] = email
+                params["contactNumber"] = contactNumber
+                params["country"] = country
+                params["city"] = city
+                params["password"] = password
+                return params
+            }
+        }
+
+        // Add the request to the RequestQueue
+        requestQueue.add(stringRequest)
     }
 }

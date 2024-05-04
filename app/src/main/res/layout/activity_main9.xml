@@ -55,25 +55,27 @@
         android:layout_height="45dp"
         android:layout_marginLeft="50px"
         android:background="@drawable/searchbar">
-<EditText
-    android:layout_width="880px"
-    android:layout_height="35dp"
-    android:layout_marginTop="20px"
-    android:textSize="15dp"
-    android:text="  Search"
-    android:paddingBottom="10px"
-    android:textColor="@color/grey"
-    android:layout_marginLeft="100px"
-    android:background="@color/white"></EditText>
+        <EditText
+            android:id="@+id/searchEditText"
+            android:layout_width="880px"
+            android:layout_height="35dp"
+            android:layout_marginTop="20px"
+            android:textSize="15dp"
+            android:hint="  Search"
+            android:paddingBottom="10px"
+            android:textColor="@color/grey"
+            android:layout_marginLeft="100px"
+            android:background="@color/white"></EditText>
 
-    <ImageButton
-        android:layout_width="80px"
-        android:layout_height="80px"
-        android:src="@mipmap/search2"
-        android:scaleType="centerCrop"
-        android:background="@color/white"
-        android:layout_marginTop="30px"
-        android:layout_marginLeft="-970px"></ImageButton>
+        <ImageButton
+            android:id="@+id/searchButton"
+            android:layout_width="80px"
+            android:layout_height="80px"
+            android:src="@mipmap/search2"
+            android:scaleType="centerCrop"
+            android:background="@color/white"
+            android:layout_marginTop="30px"
+            android:layout_marginLeft="-970px"></ImageButton>
     </LinearLayout>
 
     <TextView

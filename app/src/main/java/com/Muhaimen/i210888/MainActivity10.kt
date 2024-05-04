@@ -1,64 +1,131 @@
 package com.Muhaimen.i210888
-
-import android.content.Intent
-import androidx.appcompat.app.AppCompatActivity
+import android.content.ContentValues.TAG
 import android.os.Bundle
+import android.util.Log
+import android.view.View
+import android.widget.AdapterView
 import android.widget.ArrayAdapter
-import android.widget.ImageButton
 import android.widget.Spinner
-import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.android.volley.Request
+import com.android.volley.Response
+import com.android.volley.toolbox.StringRequest
+import com.android.volley.toolbox.Volley
+import org.json.JSONArray
+import org.json.JSONException
+class Mentor (
+    val id: String,
+    val name: String,
+    val title: String,
+    val description: String,
+    val imagePath: String,
+    val sessionPrice: Double,
+    val availability: String,
+    val rating: Double
+) {
+    constructor() : this(
+        "",
+        "",
+        "",
+        "",
+        "",
+        0.0,
+        "",
+        0.0
+    )
+}
+
 
 class MainActivity10 : AppCompatActivity() {
+
+    private lateinit var resultMentorList: ArrayList<Mentor>
+    private lateinit var resultMentorAdapter: searchAdapter
+    private val ip = "192.168.100.8"
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main10)
 
-        val items = arrayOf("Filter","aaa","bbbb")
+        setupSpinner()
+        setupRecyclerView()
+        setupButtonListeners()
 
-// Create an ArrayAdapter using the string array and a default spinner layout
+        // Initially fetch all mentors
+        retrieveAndSetMentorData("all")
+    }
+
+    private fun setupSpinner() {
+        val items = arrayOf("All", "Filter1", "Filter2") // Add your filter options here
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, items)
-
-// Specify the layout to use when the list of choices appears
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-
-// Apply the adapter to the spinner
         val spinner: Spinner = findViewById(R.id.spinner3)
         spinner.adapter = adapter
 
+        spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val selectedFilter = items[position]
+                retrieveAndSetMentorData(selectedFilter)
+            }
 
-        var button=findViewById<ImageButton>(R.id.back5)
-        button.setOnClickListener {
-            onBackPressed()
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
-
-        var button2=findViewById<ImageButton>(R.id.home2)
-        button2.setOnClickListener {
-            val intent2 = Intent(this, MainActivity8::class.java)
-            startActivity(intent2)
-        }
-        var button3=findViewById<ImageButton>(R.id.add3)
-        button3.setOnClickListener {
-            val intent3 = Intent(this, MainActivity13::class.java)
-            startActivity(intent3)
-        }
-
-        var button4=findViewById<ImageButton>(R.id.myprofile)
-        button4.setOnClickListener {
-            val intent4 = Intent(this, MainActivity21::class.java)
-            startActivity(intent4)
-        }
-
-        var button6=findViewById<ImageButton>(R.id.chat)
-        button6.setOnClickListener {
-            val intent6 = Intent(this, MainActivity15::class.java)
-            startActivity(intent6)
-        }
-
-        var button7=findViewById<ImageButton>(R.id.search)
-        button7.setOnClickListener {
-            val intent7 = Intent(this, MainActivity9::class.java)
-            startActivity(intent7)
-        }
-
     }
+
+    private fun setupRecyclerView() {
+        resultMentorList = ArrayList()
+        resultMentorAdapter = searchAdapter(resultMentorList, this)
+        val recyclerView: RecyclerView = findViewById(R.id.searchResult)
+        recyclerView.layoutManager = LinearLayoutManager(this)
+        recyclerView.adapter = resultMentorAdapter
+    }
+
+    private fun setupButtonListeners() {
+        // Setup button listeners as per your requirements
+    }
+
+    private fun retrieveAndSetMentorData(filter: String) {
+        val url = "http://$ip/get_mentors.php?filter=$filter"
+
+        val stringRequest = StringRequest(Request.Method.GET, url,
+            Response.Listener<String> { response ->
+                processMentorData(response)
+            },
+            Response.ErrorListener { error ->
+                Log.e(TAG, "Error retrieving mentor data: ${error.message}", error)
+                Toast.makeText(this, "Error retrieving mentor data: ${error.message}", Toast.LENGTH_SHORT).show()
+            })
+
+        Volley.newRequestQueue(this).add(stringRequest)
+    }
+
+    private fun processMentorData(response: String) {
+        try {
+            val mentorList = ArrayList<Mentor>()
+            val mentorsArray = JSONArray(response)
+            for (i in 0 until mentorsArray.length()) {
+                val mentorObject = mentorsArray.getJSONObject(i)
+                val mentor = Mentor(
+                    mentorObject.getString("id"),
+                    mentorObject.getString("name"),
+                    mentorObject.getString("title"),
+                    mentorObject.getString("description"),
+                    mentorObject.getString("imagePath"),
+                    mentorObject.getDouble("sessionPrice"),
+                    mentorObject.getString("availability"),
+                    mentorObject.getDouble("rating")
+                )
+                mentorList.add(mentor)
+            }
+            resultMentorList.clear()
+            resultMentorList.addAll(mentorList)
+            resultMentorAdapter.notifyDataSetChanged()
+        } catch (e: JSONException) {
+            e.printStackTrace()
+        }
+    }
+
+
 }
