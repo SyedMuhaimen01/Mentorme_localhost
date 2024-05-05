@@ -1,6 +1,7 @@
 package com.Muhaimen.i210888
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -14,10 +15,14 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.android.volley.Request
 import com.android.volley.Response
+import com.android.volley.toolbox.JsonArrayRequest
 import com.android.volley.toolbox.JsonObjectRequest
+import com.android.volley.toolbox.StringRequest
 import com.android.volley.toolbox.Volley
+import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
+import java.nio.charset.Charset
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -87,9 +92,12 @@ class MainActivity16 : AppCompatActivity() {
             Request.Method.GET, url, null,
             Response.Listener { response ->
                 try {
-                    receiverId = response.getString("id")
+                    receiverId = response.optString("id")
                     receiverId?.let {
+                        Log.d("NetworkRequest", "Received receiverId: $it")
                         readMessage(it)
+                    } ?: run {
+                        Toast.makeText(applicationContext, "Receiver ID is null", Toast.LENGTH_SHORT).show()
                     }
                 } catch (e: JSONException) {
                     e.printStackTrace()
@@ -106,36 +114,41 @@ class MainActivity16 : AppCompatActivity() {
 
 
     private fun readMessage(receiverId: String) {
-        val url = "http://$ip/read_message.php"
-        val params = JSONObject().apply {
-            put("senderId", currentUserId)
-            put("receiverId", receiverId)
-        }
+        val url = "http://$ip/read_message.php?id=$receiverId&senderId=$currentUserId"
 
         // Add log message
         Log.d("NetworkRequest", "Fetching messages for receiverId: $receiverId")
 
-        val jsonObjectRequest = JsonObjectRequest(
-            Request.Method.POST, url, params,
-            Response.Listener { response ->
-                chatList.clear()
-                val jsonArray = response.getJSONArray("messages")
-                for (i in 0 until jsonArray.length()) {
-                    val message = jsonArray.getJSONObject(i)
-                    val chat = Chat(
-                        message.getString("chatId"),
-                        message.getString("senderId"),
-                        message.getString("receiverId"),
-                        message.getString("message"),
-                        message.getString("time"),
-                        message.getString("type"),
-                        message.getString("editable")
-                    )
-                    chatList.add(chat)
-                }
-                adapter.notifyDataSetChanged()
-                if (chatList.isNotEmpty()) {
-                    recyclerView.scrollToPosition(chatList.size - 1)
+        val stringRequest = StringRequest(
+            Request.Method.GET, url,
+            Response.Listener<String> { response ->
+                try {
+                    // Log the JSON response string
+                    Log.d("NetworkRequest", "Response from server: $response")
+
+                    chatList.clear()
+                    val jsonArray = JSONArray(response)
+                    for (i in 0 until jsonArray.length()) {
+                        val message = jsonArray.getJSONObject(i)
+                        val chat = Chat(
+                            message.optString("chatId", ""),
+                            message.optString("senderId", ""),
+                            message.optString("receiverId", ""),
+                            message.optString("message", ""),
+                            message.optString("time", ""),
+                            message.optString("type", ""),
+                            message.optString("editable", "")
+                        )
+                        chatList.add(chat)
+                    }
+                    adapter.notifyDataSetChanged()
+                    if (chatList.isNotEmpty()) {
+                        recyclerView.scrollToPosition(chatList.size - 1)
+                    }
+                } catch (e: JSONException) {
+                    // Handle JSON parsing error
+                    Log.e("NetworkRequest", "Error parsing JSON: ${e.message}")
+                    Toast.makeText(applicationContext, "Error parsing JSON", Toast.LENGTH_SHORT).show()
                 }
             },
             Response.ErrorListener { error ->
@@ -143,8 +156,9 @@ class MainActivity16 : AppCompatActivity() {
             }
         )
 
-        Volley.newRequestQueue(this).add(jsonObjectRequest)
+        Volley.newRequestQueue(this).add(stringRequest)
     }
+
 
     private fun sendMessage() {
         val messageField = findViewById<EditText>(R.id.msgFeild)
@@ -152,24 +166,45 @@ class MainActivity16 : AppCompatActivity() {
         if (message.isNotEmpty()) {
             val currentTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
             val url = "http://$ip/send_message.php"
-            val params = JSONObject().apply {
-                put("senderId", currentUserId)
+
+            // Retrieve current user ID from shared preferences
+            val sharedPreferences = getSharedPreferences("users", Context.MODE_PRIVATE)
+            val currentUserId = sharedPreferences.getString("id", "") ?: ""
+
+            // Create a JSONObject to hold the message data
+            val messageObject = JSONObject().apply {
+                put("senderId", currentUserId) // Use the retrieved current user ID
                 put("receiverId", receiverId ?: "")
                 put("message", message)
                 put("time", currentTime)
                 put("type", "message")
             }
 
+            // Convert the JSON object to a string
+            val jsonString = messageObject.toString()
+
             // Add log message
-            Log.d("NetworkRequest", "Sending message: $message")
+            Log.d("NetworkRequest", "Sending message: $jsonString")
 
             val jsonObjectRequest = JsonObjectRequest(
-                Request.Method.POST, url, params,
+                Request.Method.POST, url, messageObject,
                 Response.Listener { response ->
-                    Toast.makeText(applicationContext, response.getString("message"), Toast.LENGTH_SHORT).show()
-                    messageField.text.clear()
+                    // Log the response from the server
+                    Log.d("NetworkRequest", "Response from server: $response")
+
+                    // Check if the response is a JSONObject
+                    if (response is JSONObject) {
+                        // Handle JSON response
+                        val message = response.optString("message", "Default message")
+                        Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show()
+                        messageField.text.clear()
+                    } else {
+                        // Handle non-JSON response (e.g., HTML)
+                        Toast.makeText(applicationContext, "Unexpected response format", Toast.LENGTH_SHORT).show()
+                    }
                 },
                 Response.ErrorListener { error ->
+                    // Handle error
                     Toast.makeText(applicationContext, "Error sending message: ${error.message}", Toast.LENGTH_SHORT).show()
                 }
             )
@@ -179,6 +214,9 @@ class MainActivity16 : AppCompatActivity() {
             Toast.makeText(this, "Please enter a message", Toast.LENGTH_SHORT).show()
         }
     }
+
+
+
 
     private fun openGallery() {
         val intent = Intent(Intent.ACTION_PICK)
@@ -213,7 +251,7 @@ class MainActivity16 : AppCompatActivity() {
         val jsonObjectRequest = JsonObjectRequest(
             Request.Method.POST, url, params,
             Response.Listener { response ->
-                Toast.makeText(applicationContext, response.getString("message"), Toast.LENGTH_SHORT).show()
+                Toast.makeText(applicationContext, response.optString("message"), Toast.LENGTH_SHORT).show()
             },
             Response.ErrorListener { error ->
                 Toast.makeText(applicationContext, "Error sending image: ${error.message}", Toast.LENGTH_SHORT).show()
@@ -237,7 +275,7 @@ class MainActivity16 : AppCompatActivity() {
             Request.Method.POST, url, params,
             Response.Listener { response ->
                 // Handle response if needed
-                Toast.makeText(applicationContext, response.getString("message"), Toast.LENGTH_SHORT).show()
+                Toast.makeText(applicationContext, response.optString("message"), Toast.LENGTH_SHORT).show()
             },
             Response.ErrorListener { error ->
                 Toast.makeText(applicationContext, "Error updating chat: ${error.message}", Toast.LENGTH_SHORT).show()
@@ -251,3 +289,4 @@ class MainActivity16 : AppCompatActivity() {
         private const val REQUEST_GALLERY = 100
     }
 }
+

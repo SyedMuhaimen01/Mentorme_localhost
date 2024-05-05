@@ -120,7 +120,7 @@ class MainActivity15 : AppCompatActivity() {
                             contactNumber = jsonObject.optString("contactNumber", ""),
                             country = jsonObject.optString("country", ""),
                             city = jsonObject.optString("city", ""),
-                            password = jsonObject.optString("password", ""),
+                            password = jsonObject.optString("password",""),
                             profilePicture = jsonObject.optString("profilePicture", null)
                         )
                         userList.add(user)
