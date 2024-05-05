@@ -1,10 +1,14 @@
 package com.Muhaimen.i210888
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
+import android.provider.MediaStore
+import android.util.Base64
 import android.util.Log
 import android.widget.EditText
 import android.widget.ImageButton
@@ -13,6 +17,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.android.volley.AuthFailureError
 import com.android.volley.Request
 import com.android.volley.Response
 import com.android.volley.toolbox.JsonArrayRequest
@@ -22,6 +27,8 @@ import com.android.volley.toolbox.Volley
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
+import java.io.IOException
 import java.nio.charset.Charset
 import java.text.SimpleDateFormat
 import java.util.*
@@ -114,11 +121,13 @@ class MainActivity16 : AppCompatActivity() {
 
 
     private fun readMessage(receiverId: String) {
-        val url = "http://$ip/read_message.php?id=$receiverId&senderId=$currentUserId"
+        val sharedPreferences = getSharedPreferences("users", Context.MODE_PRIVATE)
+        val senderId = sharedPreferences.getString("id", "") ?: ""
+        val url = "http://$ip/read_message.php?id=$receiverId&senderId=$senderId"
 
         // Add log message
         Log.d("NetworkRequest", "Fetching messages for receiverId: $receiverId")
-
+        Log.d("NetworkRequest", "Fetching messages for senderId: $senderId")
         val stringRequest = StringRequest(
             Request.Method.GET, url,
             Response.Listener<String> { response ->
@@ -186,35 +195,44 @@ class MainActivity16 : AppCompatActivity() {
             // Add log message
             Log.d("NetworkRequest", "Sending message: $jsonString")
 
-            val jsonObjectRequest = JsonObjectRequest(
-                Request.Method.POST, url, messageObject,
-                Response.Listener { response ->
+            val stringRequest = object : StringRequest(
+                Method.POST, url,
+                Response.Listener<String> { response ->
                     // Log the response from the server
                     Log.d("NetworkRequest", "Response from server: $response")
 
-                    // Check if the response is a JSONObject
-                    if (response is JSONObject) {
-                        // Handle JSON response
-                        val message = response.optString("message", "Default message")
+                    // Handle the response here
+                    try {
+                        val jsonObject = JSONObject(response)
+                        val message = jsonObject.optString("message", "Default message")
                         Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show()
                         messageField.text.clear()
-                    } else {
-                        // Handle non-JSON response (e.g., HTML)
-                        Toast.makeText(applicationContext, "Unexpected response format", Toast.LENGTH_SHORT).show()
+                    } catch (e: JSONException) {
+                        // Handle JSON parsing error
+                        Toast.makeText(applicationContext, "Error parsing JSON: ${e.message}", Toast.LENGTH_SHORT).show()
                     }
                 },
                 Response.ErrorListener { error ->
                     // Handle error
                     Toast.makeText(applicationContext, "Error sending message: ${error.message}", Toast.LENGTH_SHORT).show()
                 }
-            )
+            ) {
+                override fun getBodyContentType(): String {
+                    return "application/json; charset=utf-8"
+                }
 
-            Volley.newRequestQueue(this).add(jsonObjectRequest)
+                @Throws(AuthFailureError::class)
+                override fun getBody(): ByteArray {
+                    return jsonString.toByteArray(Charset.forName("utf-8"))
+                }
+            }
+
+            // Add the request to the RequestQueue
+            Volley.newRequestQueue(this).add(stringRequest)
         } else {
             Toast.makeText(this, "Please enter a message", Toast.LENGTH_SHORT).show()
         }
     }
-
 
 
 
@@ -235,31 +253,105 @@ class MainActivity16 : AppCompatActivity() {
     }
 
     private fun sendImageMessage(imageUri: Uri) {
-        val currentTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+        val userId = getUserIdFromSharedPreferences() ?: ""
         val url = "http://$ip/send_message.php"
-        val params = JSONObject().apply {
-            put("senderId", currentUserId)
-            put("receiverId", receiverId ?: "")
-            put("message", imageUri.toString())
-            put("time", currentTime)
-            put("type", "image")
-        }
+        val currentTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+        Log.d("NetworkRequest", "Sending image message. Image URI: $imageUri")
 
-        // Add log message
-        Log.d("NetworkRequest", "Sending image message with URI: $imageUri")
+        try {
+            // Read the image data from the URI
+            val inputStream = contentResolver.openInputStream(imageUri)
+            val imageByteArray = inputStream?.readBytes()
+            inputStream?.close()
 
-        val jsonObjectRequest = JsonObjectRequest(
-            Request.Method.POST, url, params,
-            Response.Listener { response ->
-                Toast.makeText(applicationContext, response.optString("message"), Toast.LENGTH_SHORT).show()
-            },
-            Response.ErrorListener { error ->
-                Toast.makeText(applicationContext, "Error sending image: ${error.message}", Toast.LENGTH_SHORT).show()
+            // Encode the image data as Base64
+            val imageDataBase64 = Base64.encodeToString(imageByteArray, Base64.DEFAULT)
+
+            // Create a JSON object to hold the message data
+            val messageObject = JSONObject().apply {
+                put("senderId", userId)
+                put("receiverId", receiverId ?: "")
+                put("message", imageDataBase64) // Send the Base64 encoded image data as the message
+                put("time", currentTime)
+                put("type", "image")
             }
-        )
 
-        Volley.newRequestQueue(this).add(jsonObjectRequest)
+            val jsonString = messageObject.toString()
+
+            val stringRequest = object : StringRequest(Method.POST, url,
+                Response.Listener { response ->
+                    Log.d("NetworkRequest", "Response from server: $response")
+                    try {
+                        val jsonObject = JSONObject(response)
+                        val message = jsonObject.optString("message", "Default message")
+                        Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show()
+                    } catch (e: JSONException) {
+                        Toast.makeText(applicationContext, "Error parsing JSON: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                Response.ErrorListener { error ->
+                    Toast.makeText(applicationContext, "Error sending image: ${error.message}", Toast.LENGTH_SHORT).show()
+                }) {
+                override fun getBodyContentType(): String {
+                    return "application/json; charset=utf-8"
+                }
+
+                override fun getBody(): ByteArray {
+                    return jsonString.toByteArray(Charset.forName("utf-8"))
+                }
+            }
+
+            // Add the request to the RequestQueue
+            Volley.newRequestQueue(this).add(stringRequest)
+        } catch (e: IOException) {
+            e.printStackTrace()
+            Toast.makeText(applicationContext, "Error reading image data", Toast.LENGTH_SHORT).show()
+        }
     }
+
+
+    // Function to get the image file name from the URI
+    @SuppressLint("Range")
+    private fun getImageFileName(uri: Uri): String {
+        var result: String? = null
+        if (uri.scheme == "content") {
+            val cursor = contentResolver.query(uri, null, null, null, null)
+            cursor?.use {
+                if (it.moveToFirst()) {
+                    result = it.getString(it.getColumnIndex(MediaStore.Images.ImageColumns.DISPLAY_NAME))
+                }
+            }
+        }
+        if (result == null) {
+            result = uri.path
+            val cut = result?.lastIndexOf('/')
+            if (cut != -1) {
+                result = result?.substring(cut!! + 1)
+            }
+        }
+        return result ?: "image.jpg"
+    }
+
+
+    private fun getUserIdFromSharedPreferences(): String? {
+        // Retrieve current user ID from shared preferences
+        val sharedPreferences = getSharedPreferences("users", Context.MODE_PRIVATE)
+        return sharedPreferences.getString("id", "")
+    }
+
+    private fun getFileDataFromUri(uri: Uri): ByteArray? {
+        return try {
+            val inputStream = contentResolver.openInputStream(uri)
+            val bytes = inputStream?.readBytes()
+            inputStream?.close()
+            bytes
+        } catch (e: IOException) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+
 
     private fun updateChatEditable(chatId: String) {
         val url = "http://$ip/update_chat.php"
@@ -289,4 +381,3 @@ class MainActivity16 : AppCompatActivity() {
         private const val REQUEST_GALLERY = 100
     }
 }
-
