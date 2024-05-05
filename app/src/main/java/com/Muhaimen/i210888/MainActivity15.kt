@@ -1,8 +1,10 @@
 package com.Muhaimen.i210888
-
+import android.content.ContentValues.TAG
+import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.Window
 import android.view.WindowManager
 import android.widget.ImageButton
@@ -21,7 +23,7 @@ import org.json.JSONException
 import org.json.JSONObject
 
 data class UserData(
-    var userId: String = "", // Add userId field
+    var userId: String = "",
     var name: String = "",
     var email: String = "",
     var contactNumber: String = "",
@@ -29,11 +31,7 @@ data class UserData(
     var city: String = "",
     var password: String = "",
     var profilePicture: String? = ""
-) {
-    // Default constructor
-    constructor() : this("", "", "", "", "", "", "", null)
-}
-
+)
 
 class MainActivity15 : AppCompatActivity() {
     private val ip = "192.168.100.8"
@@ -89,27 +87,50 @@ class MainActivity15 : AppCompatActivity() {
         fetchUserData()
     }
 
+    // Inside fetchUserData() method
+    // Inside fetchUserData() method
+    // Inside fetchUserData() method
     private fun fetchUserData() {
-        val url = "http://$ip/get_users.php" // Replace with your server URL
+        val sharedPreferences = getSharedPreferences("users", Context.MODE_PRIVATE)
+        val userId = sharedPreferences.getString("id", "")
+
+        Log.d(TAG, "Fetching user data for userId: $userId")
+
+        val url = "http://$ip/get_allusers.php?id=$userId" // Pass the current user ID
 
         val stringRequest = StringRequest(Request.Method.GET, url,
             Response.Listener<String> { response ->
+                // Log the response received from the server
+                Log.d(TAG, "Response from server: $response")
+
                 // Handle the JSON response
                 try {
                     val jsonArray = JSONArray(response)
-                    for (i in 0 until jsonArray.length()) {
-                        val jsonObject: JSONObject = jsonArray.getJSONObject(i)
-                        val userId = jsonObject.getString("userId")
-                        val userName = jsonObject.getString("userName")
-                        val userEmail = jsonObject.getString("userEmail")
 
-                        // Create UserData object and add it to the userList
-                        val userData = UserData(userId, userName, userEmail)
-                        userList.add(userData)
+                    // Clear existing data in the list
+                    userList.clear()
+
+                    // Parse the JSON array and populate userList
+                    for (i in 0 until jsonArray.length()) {
+                        val jsonObject = jsonArray.getJSONObject(i)
+                        val user = UserData(
+                            userId = jsonObject.getString("id"),
+                            name = jsonObject.getString("name"),
+                            email = jsonObject.optString("email", ""),
+                            contactNumber = jsonObject.optString("contactNumber", ""),
+                            country = jsonObject.optString("country", ""),
+                            city = jsonObject.optString("city", ""),
+                            password = jsonObject.optString("password", ""),
+                            profilePicture = jsonObject.optString("profilePicture", null)
+                        )
+                        userList.add(user)
                     }
-                    // Notify adapter of data change
+
+                    // Notify the adapter that the data set has changed
                     userAdapter.notifyDataSetChanged()
                 } catch (e: JSONException) {
+                    // Handle JSON parsing error
+                    Log.e(TAG, "Error parsing JSON: ${e.message}")
                     e.printStackTrace()
                 }
             },
@@ -121,4 +142,6 @@ class MainActivity15 : AppCompatActivity() {
         // Add the request to the RequestQueue
         Volley.newRequestQueue(this).add(stringRequest)
     }
+
+
 }

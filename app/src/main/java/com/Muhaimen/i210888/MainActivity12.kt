@@ -1,5 +1,6 @@
 package com.Muhaimen.i210888
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -72,6 +73,17 @@ class MainActivity12 : AppCompatActivity() {
         val reviewDescription = findViewById<TextView>(R.id.reviewDescription).text.toString()
         val newRating = findViewById<RatingBar>(R.id.ratingBar).rating
 
+        // Get the user ID from SharedPreferences
+        val sharedPreferences = getSharedPreferences("users", Context.MODE_PRIVATE)
+        val userId = sharedPreferences.getString("id", "")
+
+        // Check if userId is not null or empty before proceeding
+        if (userId.isNullOrEmpty()) {
+            Log.e(TAG, "User ID is null or empty")
+            Toast.makeText(this, "User ID is null or empty", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         // Send review data to the server
         val url = "http://$ip/submit_review.php"
 
@@ -95,6 +107,7 @@ class MainActivity12 : AppCompatActivity() {
             override fun getParams(): Map<String, String> {
                 val params = HashMap<String, String>()
                 params["mentorId"] = mentorId
+                params["userId"] = userId ?: ""
                 params["description"] = reviewDescription
                 params["rating"] = newRating.toString()
                 return params
@@ -103,6 +116,7 @@ class MainActivity12 : AppCompatActivity() {
 
         Volley.newRequestQueue(this).add(stringRequest)
     }
+
 
     private fun updateMentorRating(mentorId: String, newRating: Float) {
         // Send mentor rating update request to the server

@@ -1,10 +1,10 @@
 package com.Muhaimen.i210888
 
-
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.TextView
@@ -16,6 +16,7 @@ import com.android.volley.Request
 import com.android.volley.Response
 import com.android.volley.toolbox.JsonObjectRequest
 import com.android.volley.toolbox.Volley
+import org.json.JSONException
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.*
@@ -36,7 +37,7 @@ class MainActivity16 : AppCompatActivity() {
     private lateinit var adapter: ChatAdapter
     private val chatList = ArrayList<Chat>()
     private var receiverId: String? = null
-    private var currentUserId: String = "" // Assuming this is stored in SharedPreferences
+    private var currentUserId: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,7 +45,7 @@ class MainActivity16 : AppCompatActivity() {
 
         recyclerView = findViewById(R.id.userRV)
         recyclerView.layoutManager = LinearLayoutManager(this)
-        adapter = ChatAdapter( this,chatList) { chatId ->
+        adapter = ChatAdapter(this, chatList) { chatId ->
             // Handle double tap action
             updateChatEditable(chatId)
         }
@@ -77,16 +78,22 @@ class MainActivity16 : AppCompatActivity() {
     }
 
     private fun findUserIdByName(userName: String) {
-        val url = "http://$ip/find_user_id.php"
-        val params = HashMap<String, String>()
-        params["userName"] = userName
+        val url = "http://$ip/find_user_id.php?name=$userName"
+
+        // Add log message
+        Log.d("NetworkRequest", "Fetching user data for userName: $userName")
 
         val jsonObjectRequest = JsonObjectRequest(
-            Request.Method.POST, url, JSONObject(params as Map<*, *>?),
+            Request.Method.GET, url, null,
             Response.Listener { response ->
-                receiverId = response.getString("id")
-                receiverId?.let {
-                    readMessage(it)
+                try {
+                    receiverId = response.getString("id")
+                    receiverId?.let {
+                        readMessage(it)
+                    }
+                } catch (e: JSONException) {
+                    e.printStackTrace()
+                    Toast.makeText(applicationContext, "Error parsing JSON: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             },
             Response.ErrorListener { error ->
@@ -97,14 +104,19 @@ class MainActivity16 : AppCompatActivity() {
         Volley.newRequestQueue(this).add(jsonObjectRequest)
     }
 
+
     private fun readMessage(receiverId: String) {
         val url = "http://$ip/read_message.php"
-        val params = HashMap<String, String>()
-        params["senderId"] = currentUserId
-        params["receiverId"] = receiverId
+        val params = JSONObject().apply {
+            put("senderId", currentUserId)
+            put("receiverId", receiverId)
+        }
+
+        // Add log message
+        Log.d("NetworkRequest", "Fetching messages for receiverId: $receiverId")
 
         val jsonObjectRequest = JsonObjectRequest(
-            Request.Method.POST, url, JSONObject(params as Map<*, *>?),
+            Request.Method.POST, url, params,
             Response.Listener { response ->
                 chatList.clear()
                 val jsonArray = response.getJSONArray("messages")
@@ -140,15 +152,19 @@ class MainActivity16 : AppCompatActivity() {
         if (message.isNotEmpty()) {
             val currentTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
             val url = "http://$ip/send_message.php"
-            val params = HashMap<String, String>()
-            params["senderId"] = currentUserId
-            params["receiverId"] = receiverId ?: ""
-            params["message"] = message
-            params["time"] = currentTime
-            params["type"] = "message"
+            val params = JSONObject().apply {
+                put("senderId", currentUserId)
+                put("receiverId", receiverId ?: "")
+                put("message", message)
+                put("time", currentTime)
+                put("type", "message")
+            }
+
+            // Add log message
+            Log.d("NetworkRequest", "Sending message: $message")
 
             val jsonObjectRequest = JsonObjectRequest(
-                Request.Method.POST, url, JSONObject(params as Map<*, *>?),
+                Request.Method.POST, url, params,
                 Response.Listener { response ->
                     Toast.makeText(applicationContext, response.getString("message"), Toast.LENGTH_SHORT).show()
                     messageField.text.clear()
@@ -183,15 +199,19 @@ class MainActivity16 : AppCompatActivity() {
     private fun sendImageMessage(imageUri: Uri) {
         val currentTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
         val url = "http://$ip/send_message.php"
-        val params = HashMap<String, String>()
-        params["senderId"] = currentUserId
-        params["receiverId"] = receiverId ?: ""
-        params["message"] = imageUri.toString()
-        params["time"] = currentTime
-        params["type"] = "image"
+        val params = JSONObject().apply {
+            put("senderId", currentUserId)
+            put("receiverId", receiverId ?: "")
+            put("message", imageUri.toString())
+            put("time", currentTime)
+            put("type", "image")
+        }
+
+        // Add log message
+        Log.d("NetworkRequest", "Sending image message with URI: $imageUri")
 
         val jsonObjectRequest = JsonObjectRequest(
-            Request.Method.POST, url, JSONObject(params as Map<*, *>?),
+            Request.Method.POST, url, params,
             Response.Listener { response ->
                 Toast.makeText(applicationContext, response.getString("message"), Toast.LENGTH_SHORT).show()
             },
@@ -205,12 +225,16 @@ class MainActivity16 : AppCompatActivity() {
 
     private fun updateChatEditable(chatId: String) {
         val url = "http://$ip/update_chat.php"
-        val params = HashMap<String, String>()
-        params["chatId"] = chatId
-        params["editable"] = "yes"
+        val params = JSONObject().apply {
+            put("chatId", chatId)
+            put("editable", "yes")
+        }
+
+        // Add log message
+        Log.d("NetworkRequest", "Updating chat editable status for chatId: $chatId")
 
         val jsonObjectRequest = JsonObjectRequest(
-            Request.Method.POST, url, JSONObject(params as Map<*, *>?),
+            Request.Method.POST, url, params,
             Response.Listener { response ->
                 // Handle response if needed
                 Toast.makeText(applicationContext, response.getString("message"), Toast.LENGTH_SHORT).show()

@@ -54,14 +54,22 @@ class MainActivity24 : AppCompatActivity() {
 
     private fun getCurrentUserId(): String {
         // Retrieve current user ID from SharedPreferences or wherever it's stored
-        val sharedPreferences: SharedPreferences = getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
-        return sharedPreferences.getString("userId", "") ?: ""
+        val sharedPreferences: SharedPreferences = getSharedPreferences("users", Context.MODE_PRIVATE)
+        return sharedPreferences.getString("id", "") ?: ""
     }
 
+    // Inside the fetchBookedSessions() function, modify the URL to include the current user's ID as a query parameter
     private fun fetchBookedSessions() {
-        val url = "http://$ip/get_booked_sessions.php"
+        val id = getCurrentUserId()
+        val url = "http://$ip/get_booked_sessions.php?id=$id"
+
+        // Log the URL to see what is being requested
+        Log.d(TAG, "Fetching booked sessions from: $url")
+
         val jsonArrayRequest = JsonArrayRequest(
-            Request.Method.POST, url, null,
+            Request.Method.GET, // Use GET method
+            url,
+            null,
             Response.Listener<JSONArray> { response ->
                 try {
                     for (i in 0 until response.length()) {
@@ -82,6 +90,7 @@ class MainActivity24 : AppCompatActivity() {
         // Add the request to the RequestQueue
         Volley.newRequestQueue(this).add(jsonArrayRequest)
     }
+
 
     private fun JSONObject.toMap(): Map<String, Any> {
         val map = mutableMapOf<String, Any>()

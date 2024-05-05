@@ -2,6 +2,7 @@ package com.Muhaimen.i210888
 import android.content.Intent
 import android.os.Bundle
 import android.widget.ArrayAdapter
+import android.widget.EditText
 import android.widget.Spinner
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -36,12 +37,12 @@ class MainActivity4 : AppCompatActivity() {
 
         val button = findViewById<TextView>(R.id.signup)
         button.setOnClickListener {
-            val name = findViewById<TextView>(R.id.nameEditText).text.toString()
-            val email = findViewById<TextView>(R.id.emailEditText).text.toString()
-            val contactNumber = findViewById<TextView>(R.id.contactNumberEditText).text.toString()
+            val name = findViewById<EditText>(R.id.nameEditText).text.toString()
+            val email = findViewById<EditText>(R.id.emailEditText).text.toString()
+            val contactNumber = findViewById<EditText>(R.id.contactNumberEditText).text.toString()
             val country = spinner.selectedItem.toString()
             val city = spinner2.selectedItem.toString()
-            val password = findViewById<TextView>(R.id.passwordEditText).text.toString()
+            val password = findViewById<EditText>(R.id.passwordEditText).text.toString()
 
             // Make network request using Volley
             saveUser(name, email, contactNumber, country, city, password)

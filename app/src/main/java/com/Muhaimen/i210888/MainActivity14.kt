@@ -112,27 +112,22 @@ class MainActivity14 : AppCompatActivity() {
     }
 
     private suspend fun getMentorDetailsFromServer(mentorName: String) {
-        val url = "http://192.168.100.8/get_mentor.php"
-        val stringRequest = object : StringRequest(
-            Request.Method.POST, url,
+        val url = "http://192.168.100.8/get_mentor.php?name=$mentorName"
+        val stringRequest = StringRequest(
+            Request.Method.GET, url,
             Response.Listener<String> { response ->
                 processMentorDetails(response)
             },
             Response.ErrorListener { error ->
                 Log.e(TAG, "Error retrieving mentor details: ${error.message}", error)
                 Toast.makeText(this@MainActivity14, "Error retrieving mentor details: ${error.message}", Toast.LENGTH_SHORT).show()
-            }) {
-            override fun getParams(): Map<String, String> {
-                val params = HashMap<String, String>()
-                params["name"] = mentorName
-                return params
-            }
-        }
+            })
 
         withContext(Dispatchers.IO) {
             requestQueue.add(stringRequest)
         }
     }
+
 
     private fun processMentorDetails(response: String) {
         try {
@@ -159,8 +154,10 @@ class MainActivity14 : AppCompatActivity() {
     }
 
     private fun loadImage(uri: Uri) {
+        val baseUrl = "http://192.168.100.8/" // Base URL for the images
+        val completeImageUrl = baseUrl + uri
         Glide.with(this)
-            .load(uri)
+            .load(completeImageUrl)
             .apply(RequestOptions().transform(CircleCrop()))
             .into(profileImage)
     }
@@ -183,7 +180,7 @@ class MainActivity14 : AppCompatActivity() {
         val stringRequest = object : StringRequest(
             Request.Method.POST, url,
             Response.Listener<String> { response ->
-                if (response.contains("Appointment booked successfully")) {
+                if (response.contains("Booking inserted successfully")) {
                     Toast.makeText(this, "Appointment booked successfully", Toast.LENGTH_SHORT).show()
                 } else {
                     Toast.makeText(this, "Failed to book appointment", Toast.LENGTH_SHORT).show()

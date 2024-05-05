@@ -29,10 +29,10 @@ class MainActivity21 : AppCompatActivity() {
     private lateinit var usernameTextView: TextView
     private lateinit var locationTextView: TextView
     private val ip = "192.168.100.8"
+    private val FETCH_USER_URL = "http://$ip/get_user.php"
     private val FETCH_IMAGE_URL = "http://$ip/getImage.php"
     private lateinit var profileImageView: ImageView
     private lateinit var requestQueue: RequestQueue
-
 
     private val getContent = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let { selectedImage ->
@@ -111,114 +111,30 @@ class MainActivity21 : AppCompatActivity() {
     private fun uploadImageToServer(imageUri: Uri) {
         // Implement image upload functionality to your server here
     }
-    private fun fetchProfileImage() {
-        val request = StringRequest(
-            Request.Method.POST,
-            FETCH_IMAGE_URL,
-            { response ->
-                try {
-                    val jsonObject = JSONObject(response)
-                    val success = jsonObject.getString("success")
-                    val imageUrl = jsonObject.getString("profilePicture")
 
-                    if (success == "1") {
-                        val fullImageUrl = "http://$ip/$imageUrl"
-
-                        Log.d("ImageLoading", "Full Image URL: $fullImageUrl")
-
-                        loadImage(fullImageUrl)
-                    } else {
-                        Log.e("ImageLoading", "Failed to fetch image")
-                    }
-                } catch (e: JSONException) {
-                    e.printStackTrace()
-                }
-            },
-            { error ->
-                Log.e("ImageLoading", "Error: ${error.message}")
-            }
-        )
-
-        requestQueue.add(request)
-    }
-    private fun loadImage(imageUrl: String) {
-        Log.d("ImageLoading", "Loading image from URL: $imageUrl")
-        Glide.with(this)
-            .load(imageUrl)
-            .circleCrop()
-            .listener(object : RequestListener<Drawable> {
-                override fun onLoadFailed(
-                    e: GlideException?,
-                    model: Any?,
-                    target: Target<Drawable>?,
-                    isFirstResource: Boolean
-                ): Boolean {
-                    Log.e("ImageLoading", "Image loading failed: $e")
-                    return false
-                }
-
-                override fun onResourceReady(
-                    resource: Drawable?,
-                    model: Any?,
-                    target: Target<Drawable>?,
-                    dataSource: DataSource?,
-                    isFirstResource: Boolean
-                ): Boolean {
-                    Log.d("ImageLoading", "Image loaded successfully")
-                    return false
-                }
-            })
-            .into(findViewById(R.id.profileImageView))
-    }
-    private fun loadUserProfile() {
-        val userId = getUserIdFromSharedPreferences()
-        val url = "http://$ip/getImage.php?id=$userId" // Replace with your server URL for fetching user profile
-
+    private fun fetchUserProfile(userId: String) {
+        val url = "$FETCH_USER_URL?id=$userId" // Updated parameter name
         val request = StringRequest(
             Request.Method.GET,
             url,
             { response ->
                 try {
+                    Log.d("MainActivity21", "User data response received: $response")
                     val jsonObject = JSONObject(response)
                     val username = jsonObject.getString("name")
                     val location = jsonObject.getString("city")
-                    val imageUrl = jsonObject.getString("profilePicture")
+                    val imageFileName = jsonObject.getString("profilePicture")
+
+                    Log.d("MainActivity21", "Retrieved user details - Name: $username, City: $location, Profile Picture FileName: $imageFileName")
 
                     usernameTextView.text = username
                     locationTextView.text = location
 
-                    // Load user image if available
-                    // Load the image using Glide if the image URL is not null or empty
-                    if (!imageUrl.isNullOrEmpty()) {
-                        val fullImageUrl = "http://$ip/$imageUrl"
-                        Glide.with(this)
-                            .load(fullImageUrl)
-                            .circleCrop()
-                            .listener(object : RequestListener<Drawable> {
-                                override fun onLoadFailed(
-                                    e: GlideException?,
-                                    model: Any?,
-                                    target: Target<Drawable>?,
-                                    isFirstResource: Boolean
-                                ): Boolean {
-                                    Log.e("ImageLoading", "Image loading failed: $e")
-                                    return false
-                                }
-
-                                override fun onResourceReady(
-                                    resource: Drawable?,
-                                    model: Any?,
-                                    target: Target<Drawable>?,
-                                    dataSource: DataSource?,
-                                    isFirstResource: Boolean
-                                ): Boolean {
-                                    Log.d("ImageLoading", "Image loaded successfully")
-                                    return false
-                                }
-                            })
-                            .into(profileImageView)
+                    if (!imageFileName.isNullOrEmpty()) {
+                        Log.d("MainActivity21", "Loading image for user with ID: $userId")
+                        loadImage(imageFileName) // Use the imageFileName obtained from the JSON response
                     } else {
-                        Log.d("ImageLoading", "Image URL is null or empty")
+                        Log.d("ImageLoading", "Image FileName is null or empty")
                     }
                 } catch (e: JSONException) {
                     e.printStackTrace()
@@ -232,6 +148,56 @@ class MainActivity21 : AppCompatActivity() {
         requestQueue.add(request)
     }
 
+    private fun loadImage(imageFileName: String) {
+        val imageUrl = "http://$ip/getImage.php?id=$imageFileName" // Construct the complete image URL
+        Log.d("ImageLoading", "Loading image from URL: $imageUrl")
+        Glide.with(this)
+            .load(imageUrl)
+            .circleCrop()
+            .listener(object : RequestListener<Drawable> {
+                override fun onLoadFailed(
+                    e: GlideException?,
+                    model: Any?,
+                    target: Target<Drawable>?,
+                    isFirstResource: Boolean
+                ): Boolean {
+                    Log.e("ImageLoading", "Image loading failed: $e")
+                    return false // Return false to allow Glide to handle the failure
+                }
+
+                override fun onResourceReady(
+                    resource: Drawable?,
+                    model: Any?,
+                    target: Target<Drawable>?,
+                    dataSource: DataSource?,
+                    isFirstResource: Boolean
+                ): Boolean {
+                    Log.d("ImageLoading", "Image loaded successfully")
+                    return false // Return false to allow Glide to handle the resource
+                }
+            })
+            .into(profileImageView)
+    }
+
+
+    private fun getUserIdFromSharedPreferences(): String? {
+        val sharedPreferences = getSharedPreferences("users", Context.MODE_PRIVATE) // Updated SharedPreferences key
+        val userId = sharedPreferences.getString("id", null) // Updated key name
+        Log.d("MainActivity21", "User ID from SharedPreferences: $userId")
+        return userId
+    }
+
+
+
+
+    private fun loadUserProfile() {
+        val userId = getUserIdFromSharedPreferences()
+        userId?.let {
+            Log.d("MainActivity21", "Requesting user profile with ID: $userId")
+            fetchUserProfile(userId)
+        }
+    }
+
     private fun logoutUser() {
         val intent = Intent(this, Main3Activity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -239,10 +205,5 @@ class MainActivity21 : AppCompatActivity() {
         finish()
     }
 
-    private fun getUserIdFromSharedPreferences(): String? {
-        val sharedPreferences = getSharedPreferences("users", Context.MODE_PRIVATE)
-        val id = sharedPreferences.getString("id", null)
-        Log.d("MainActivity21", "User ID from SharedPreferences: $id")
-        return id
-    }
+
 }
