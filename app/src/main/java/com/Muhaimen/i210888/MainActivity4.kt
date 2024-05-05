@@ -1,6 +1,8 @@
 package com.Muhaimen.i210888
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.Spinner
@@ -65,6 +67,9 @@ class MainActivity4 : AppCompatActivity() {
                 // Handle the response
                 if (response.contains("New record created successfully")) {
                     // Data saved successfully
+                    // Save user details in SharedPreferences
+                    saveUserToSharedPreferences(name, email, contactNumber, country, city, password)
+
                     // You can perform additional actions here if needed
                     // For example, you can show a success message or navigate to another activity
                     startActivity(Intent(this@MainActivity4, MainActivity5::class.java))
@@ -93,4 +98,19 @@ class MainActivity4 : AppCompatActivity() {
         // Add the request to the RequestQueue
         requestQueue.add(stringRequest)
     }
+
+    private fun saveUserToSharedPreferences(name: String, email: String, contactNumber: String, country: String, city: String, password: String) {
+        val sharedPreferences = getSharedPreferences("users", Context.MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+        editor.putString("name", name)
+        editor.putString("email", email)
+        editor.putString("contactNumber", contactNumber)
+        editor.putString("country", country)
+        editor.putString("city", city)
+        editor.putString("password", password)
+        editor.apply()
+        Log.d("MainActivity", "User data saved to SharedPreferences: $name, $email, $contactNumber, $country, $city, $password")
+    }
+
+
 }
