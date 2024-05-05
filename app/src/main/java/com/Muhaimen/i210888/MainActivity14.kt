@@ -1,6 +1,12 @@
 package com.Muhaimen.i210888
 
+import android.annotation.SuppressLint
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
+import android.graphics.Color
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.CalendarView
@@ -8,7 +14,9 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.NotificationCompat
 import com.android.volley.Request
 import com.android.volley.RequestQueue
 import com.android.volley.Response
@@ -181,7 +189,8 @@ class MainActivity14 : AppCompatActivity() {
             Request.Method.POST, url,
             Response.Listener<String> { response ->
                 if (response.contains("Booking inserted successfully")) {
-                    Toast.makeText(this, "Appointment booked successfully", Toast.LENGTH_SHORT).show()
+                    // Show notification
+                    showBookingSuccessNotification()
                 } else {
                     Toast.makeText(this, "Failed to book appointment", Toast.LENGTH_SHORT).show()
                 }
@@ -200,5 +209,28 @@ class MainActivity14 : AppCompatActivity() {
         }
 
         requestQueue.add(stringRequest)
+    }
+    private val NOTIFICATION_CHANNEL_ID = "BookingNotification"
+
+    @SuppressLint("ServiceCast", "NewApi")
+    private fun showBookingSuccessNotification() {
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(NOTIFICATION_CHANNEL_ID, "Booking Notification", NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = "Notification for booking success"
+                enableLights(true)
+                lightColor = Color.GREEN
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        val builder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setSmallIcon(R.drawable.notification2_foreground)
+            .setContentTitle("Booking Successful")
+            .setContentText("Your appointment has been successfully booked.")
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+
+        notificationManager.notify(1, builder.build())
     }
 }

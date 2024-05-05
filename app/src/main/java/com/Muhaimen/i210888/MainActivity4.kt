@@ -1,6 +1,11 @@
 package com.Muhaimen.i210888
+
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.ArrayAdapter
@@ -8,16 +13,18 @@ import android.widget.EditText
 import android.widget.Spinner
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.android.volley.Request
 import com.android.volley.RequestQueue
 import com.android.volley.Response
 import com.android.volley.toolbox.StringRequest
 import com.android.volley.toolbox.Volley
-import java.net.URLEncoder
 
 class MainActivity4 : AppCompatActivity() {
 
     private lateinit var requestQueue: RequestQueue
+    private val NOTIFICATION_CHANNEL_ID = "RegistrationNotification"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,10 +77,8 @@ class MainActivity4 : AppCompatActivity() {
                     // Save user details in SharedPreferences
                     saveUserToSharedPreferences(name, email, contactNumber, country, city, password)
 
-                    // You can perform additional actions here if needed
-                    // For example, you can show a success message or navigate to another activity
-                    startActivity(Intent(this@MainActivity4, MainActivity5::class.java))
-                    finish()
+                    // Show registration success notification
+                    showRegistrationSuccessNotification()
                 } else {
                     // Data saving failed
                     // You can handle the failure here, such as showing an error message
@@ -112,5 +117,25 @@ class MainActivity4 : AppCompatActivity() {
         Log.d("MainActivity", "User data saved to SharedPreferences: $name, $email, $contactNumber, $country, $city, $password")
     }
 
+    private fun showRegistrationSuccessNotification() {
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(NOTIFICATION_CHANNEL_ID, "Registration Notification", NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = "Notification for registration success"
+                enableLights(true)
+                lightColor = Color.GREEN
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        val builder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setSmallIcon(R.drawable.notification2_foreground)
+            .setContentTitle("Registration Successful")
+            .setContentText("Your account has been successfully registered.")
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+
+        notificationManager.notify(1, builder.build())
+    }
 
 }

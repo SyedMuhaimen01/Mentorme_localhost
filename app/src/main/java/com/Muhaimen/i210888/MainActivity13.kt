@@ -1,26 +1,31 @@
 package com.Muhaimen.i210888
-
 import android.annotation.SuppressLint
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.graphics.Color
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import android.util.Base64
 import android.util.Log
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.NotificationCompat
+import com.Muhaimen.i210888.R
 import com.android.volley.Request
 import com.android.volley.RequestQueue
 import com.android.volley.Response
 import com.android.volley.toolbox.StringRequest
 import com.android.volley.toolbox.Volley
-import java.io.ByteArrayOutputStream
-import android.util.Base64
 import com.google.android.material.imageview.ShapeableImageView
 import java.util.*
 
 class MainActivity13 : AppCompatActivity() {
-
+    private val NOTIFICATION_CHANNEL_ID = "newMentorNotification"
     private lateinit var requestQueue: RequestQueue
     private lateinit var sharedPreferences: SharedPreferences
 
@@ -129,7 +134,6 @@ class MainActivity13 : AppCompatActivity() {
         }
     }
 
-
     private fun saveMentorDetails(name: String, description: String, availability: String, rating: String, sessionPrice: String, title: String) {
         Log.d(TAG, "Saving mentor details to SharedPreferences")
         sharedPreferences.edit().apply {
@@ -143,7 +147,6 @@ class MainActivity13 : AppCompatActivity() {
             apply()
         }
     }
-
 
     private fun saveMentor(name: String, description: String, availability: String, rating: String, sessionPrice: String, title: String) {
         // Convert the selected image to a byte array
@@ -163,6 +166,7 @@ class MainActivity13 : AppCompatActivity() {
                     // Handle the mentor data save response
                     if (response.contains("New record created successfully")) {
                         // Data saved successfully
+                        showMentorUploadNotification()
                         startActivity(Intent(this@MainActivity13, MainActivity14::class.java))
                         finish()
                     } else {
@@ -196,6 +200,27 @@ class MainActivity13 : AppCompatActivity() {
             Log.e(TAG, "Error: Unable to read image bytes.")
             Toast.makeText(this@MainActivity13, "Error: Unable to read image bytes.", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun showMentorUploadNotification() {
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(NOTIFICATION_CHANNEL_ID, "Mentor Notification", NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = "Notification for new mentor addition"
+                enableLights(true)
+                lightColor = Color.GREEN
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        val builder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setSmallIcon(R.drawable.notification2_foreground)
+            .setContentTitle("Mentor Added")
+            .setContentText("Mentor is Successfully added.")
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+
+        notificationManager.notify(1, builder.build())
     }
 
     companion object {

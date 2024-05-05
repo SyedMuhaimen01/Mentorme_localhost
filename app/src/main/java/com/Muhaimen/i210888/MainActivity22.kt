@@ -1,14 +1,19 @@
 package com.Muhaimen.i210888
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.graphics.drawable.Drawable
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.util.Base64
 import android.util.Log
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.NotificationCompat
 import com.android.volley.Request
 import com.android.volley.RequestQueue
 import com.android.volley.Response
@@ -26,7 +31,7 @@ import org.json.JSONException
 import org.json.JSONObject
 
 class MainActivity22 : AppCompatActivity() {
-
+    private val NOTIFICATION_CHANNEL_ID = "UpdateNotification"
     private lateinit var countrySpinner: Spinner
     private lateinit var citySpinner: Spinner
     private lateinit var requestQueue: RequestQueue
@@ -121,6 +126,7 @@ class MainActivity22 : AppCompatActivity() {
             UPDATE_URL,
             Response.Listener<String> { response ->
                 if (response.contains("User data updated successfully")) {
+                    showDataUpdateNotification()
                     Toast.makeText(this, "User data updated successfully", Toast.LENGTH_SHORT).show()
                 } else {
                     Toast.makeText(this, "Failed to update user data", Toast.LENGTH_SHORT).show()
@@ -271,6 +277,7 @@ class MainActivity22 : AppCompatActivity() {
             UPDATE_URL,
             Response.Listener<String> { response ->
                 if (response.contains("User data updated successfully")) {
+                    showDataUpdateNotification()
                     saveProfilePictureToSharedPreferences(imageUrl)
                     Toast.makeText(this, "User data updated successfully", Toast.LENGTH_SHORT).show()
                 } else {
@@ -331,4 +338,25 @@ class MainActivity22 : AppCompatActivity() {
         editor.putString("profilePicture", imageUrl)
         editor.apply()
     }
+    private fun showDataUpdateNotification() {
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(NOTIFICATION_CHANNEL_ID, "Data Update Notification", NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = "Notification for profile data update"
+                enableLights(true)
+                lightColor = Color.GREEN
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        val builder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setSmallIcon(R.drawable.notification2_foreground)
+            .setContentTitle("Data Updated")
+            .setContentText("Your profile data has been successfully updated.")
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+
+        notificationManager.notify(2, builder.build())
+    }
+
 }

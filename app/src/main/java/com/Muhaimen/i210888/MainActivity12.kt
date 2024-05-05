@@ -1,8 +1,12 @@
 package com.Muhaimen.i210888
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.ImageButton
@@ -11,6 +15,8 @@ import android.widget.RatingBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.android.volley.Request
 import com.android.volley.Response
 import com.android.volley.toolbox.StringRequest
@@ -20,16 +26,10 @@ import com.bumptech.glide.load.resource.bitmap.CircleCrop
 import com.bumptech.glide.request.RequestOptions
 import org.json.JSONException
 
-data class Review(
-    val id: String,
-    val userId: String,
-    val mentorId: String,
-    val description: String,
-    val rating: Float
-)
-
 class MainActivity12 : AppCompatActivity() {
     private val ip = "192.168.100.8"
+    private val NOTIFICATION_CHANNEL_ID = "ReviewNotification"
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main12)
@@ -93,6 +93,7 @@ class MainActivity12 : AppCompatActivity() {
                 if (response == "success") {
                     // Review submitted successfully
                     updateMentorRating(mentorId, newRating)
+                    showReviewSubmissionNotification()
                     onBackPressed()
                 } else {
                     // Failed to submit review
@@ -116,7 +117,6 @@ class MainActivity12 : AppCompatActivity() {
 
         Volley.newRequestQueue(this).add(stringRequest)
     }
-
 
     private fun updateMentorRating(mentorId: String, newRating: Float) {
         // Send mentor rating update request to the server
@@ -147,6 +147,28 @@ class MainActivity12 : AppCompatActivity() {
 
         Volley.newRequestQueue(this).add(stringRequest)
     }
+
+    private fun showReviewSubmissionNotification() {
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(NOTIFICATION_CHANNEL_ID, "Review Notification", NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = "Notification for review submission"
+                enableLights(true)
+                lightColor = Color.GREEN
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        val builder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setSmallIcon(R.drawable.notification2_foreground)
+            .setContentTitle("Review Submitted")
+            .setContentText("Your review has been successfully submitted.")
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+
+        notificationManager.notify(1, builder.build())
+    }
+
 
     companion object {
         private const val TAG = "MainActivity12"
